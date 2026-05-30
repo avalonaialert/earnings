@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Earnings Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 24px;
+      border-bottom: 1px solid #21262d;
+      background: #0d1117;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 700; color: #e6edf3; letter-spacing: 0.3px; }
+
+    .header-right {
+      display: flex; align-items: center; gap: 14px; font-size: 0.8rem; color: #8b949e;
+    }
+
+    .market-chip {
+      font-size: 0.72rem; font-weight: 600; padding: 3px 10px;
+      border-radius: 20px; white-space: nowrap;
+    }
+    .market-open   { background: #0d2118; border: 1px solid #238636; color: #3fb950; }
+    .market-pre    { background: #0d1b2e; border: 1px solid #1f6feb; color: #58a6ff; }
+    .market-after  { background: #1c1400; border: 1px solid #f59e0b; color: #fbbf24; }
+    .market-closed { background: #161b22; border: 1px solid #30363d; color: #8b949e; }
+
+    /* ── Main content ── */
+    main {
+      flex: 1;
+      padding: 24px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Add symbol form ── */
+    .add-form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .add-form input {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: #e6edf3;
+      font-size: 0.9rem;
+      font-family: inherit;
+      text-transform: uppercase;
+      width: 160px;
+    }
+    .add-form input:focus { outline: none; border-color: #58a6ff; }
+    .add-form input::placeholder { text-transform: none; color: #484f58; }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-add    { background: #238636; color: #fff; }
+    .btn-remove { background: transparent; border: 1px solid #da3633; color: #f85149;
+                  padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; }
+    .btn-remove:hover { background: #2d0f0f; opacity: 1; }
+
+    .form-msg {
+      font-size: 0.8rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+    .form-msg.ok  { background: #0d2118; color: #3fb950; border: 1px solid #238636; }
+    .form-msg.err { background: #2d0f0f; color: #f85149; border: 1px solid #da3633; }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after { content: ""; flex: 1; height: 1px; }
+
+    .triggered-title       { color: #34d399; }
+    .triggered-title::after { background: #0d3a26; }
+    .watchlist-title        { color: #58a6ff; }
+    .watchlist-title::after { background: #1f3a6e; }
+
+    .section-wrap { margin-bottom: 40px; }
+
+    /* ── Tables ── */
+    .table-wrap { border-radius: 8px; overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.6px;
+      white-space: nowrap;
+    }
+
+    tbody tr { transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    td { padding: 9px 14px; white-space: nowrap; }
+
+    /* Triggered table — green theme */
+    .trig-wrap { border: 1px solid #0d3a26; }
+    .trig-table thead th { background: #071f14; color: #2d9362; border-bottom: 1px solid #0d3a26; }
+    .trig-table tbody tr { border-bottom: 1px solid #0a1f14; }
+    .trig-table tbody tr:hover { background: #071f14; }
+
+    /* Watchlist table — blue theme */
+    .watch-wrap { border: 1px solid #1f3a6e; }
+    .watch-table thead th { background: #071428; color: #2d62aa; border-bottom: 1px solid #1f3a6e; }
+    .watch-table tbody tr { border-bottom: 1px solid #0a1428; }
+    .watch-table tbody tr:hover { background: #071428; }
+
+    /* Cell helpers */
+    .td-sym   { font-weight: 700; font-size: 0.95rem; }
+    .td-sym.trig  { color: #34d399; }
+    .td-sym.watch { color: #58a6ff; }
+    .td-price { color: #e6edf3; font-weight: 600; }
+    .td-meta  { color: #8b949e; font-size: 0.78rem; }
+    .td-gain  { font-weight: 700; }
+    .td-gain.pos { color: #3fb950; }
+    .td-gain.neg { color: #f85149; }
+
+    /* Direction badge */
+    .dir-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 0.72rem; font-weight: 700;
+    }
+    .dir-gaining  { background: #0d2118; color: #3fb950; border: 1px solid #238636; }
+    .dir-declining{ background: #2d0f0f; color: #f85149; border: 1px solid #da3633; }
+    .dir-flat     { background: #161b22; color: #8b949e; border: 1px solid #30363d; }
+    .dir-unknown  { background: #161b22; color: #484f58; border: 1px solid #21262d; }
+
+    /* Source badge */
+    .src-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+    }
+    .src-earnings { background: #1c1400; border: 1px solid #f59e0b; color: #fbbf24; }
+    .src-manual   { background: #161b22; border: 1px solid #30363d; color: #8b949e; }
+
+    .sym-link { color: inherit; text-decoration: none; }
+    .sym-link:hover { text-decoration: underline; opacity: 0.85; }
+
+    .empty-row td { color: #484f58; font-style: italic; text-align: center; padding: 20px; }
+
+    /* ── Login overlay (same as index.html) ── */
+    #login-overlay {
+      position: fixed; inset: 0; background: #0d1117;
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    #login-overlay.hidden { display: none; }
+    .login-box {
+      background: #161b22; border: 1px solid #21262d; border-radius: 14px;
+      padding: 40px 36px; width: 100%; max-width: 360px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .login-box h2 { font-size: 1.15rem; font-weight: 700; color: #e6edf3; }
+    .login-field  { display: flex; flex-direction: column; gap: 6px; }
+    .login-field label { font-size: 0.8rem; color: #8b949e; }
+    .login-field input {
+      background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+      padding: 10px 14px; color: #e6edf3; font-size: 0.95rem; font-family: inherit;
+    }
+    .login-field input:focus { outline: none; border-color: #58a6ff; }
+    #login-error { font-size: 0.8rem; color: #f85149; min-height: 18px; }
+    .login-btn {
+      background: #238636; color: #fff; border: none; border-radius: 8px;
+      padding: 11px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    }
+    .login-btn:hover { background: #2ea043; }
+
+    /* ── Potential Triggers section — amber theme ── */
+    .potential-title        { color: #fbbf24; }
+    .potential-title::after { background: #3a2e00; }
+    .potential-wrap { border: 1px solid #3a2e00; }
+    .potential-table thead th { background: #1a1400; color: #a07800; border-bottom: 1px solid #3a2e00; }
+    .potential-table tbody tr { border-bottom: 1px solid #211a00; }
+    .potential-table tbody tr:hover { background: #1a1400; }
+    .td-sym.potential { color: #fbbf24; }
+
+    /* ── Upcoming Earnings section ── */
+    .upcoming-title {
+      font-size: 0.95rem; font-weight: 700; padding: 10px 0 10px 4px;
+      color: #fbbf24; letter-spacing: 0.2px;
+    }
+    .upcoming-wrap { border: 1px solid #3a2e00; border-radius: 10px; overflow: hidden; }
+    .upcoming-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .upcoming-table thead th {
+      background: #1a1400; color: #8b949e; font-weight: 600;
+      padding: 8px 12px; text-align: left; border-bottom: 1px solid #3a2e00;
+    }
+    .upcoming-table tbody tr { border-bottom: 1px solid #21262d; }
+    .upcoming-table tbody tr:last-child { border-bottom: none; }
+    .upcoming-table tbody tr:hover { background: #161b22; }
+    .upcoming-table td { padding: 7px 12px; }
+    .upcoming-table td.td-date-group {
+      color: #e6edf3; font-weight: 700; white-space: nowrap;
+    }
+    .time-bmo { display:inline-block; padding:2px 7px; border-radius:10px; font-size:0.7rem; font-weight:700;
+                background:#0d1b2e; border:1px solid #1f6feb; color:#58a6ff; }
+    .time-amc { display:inline-block; padding:2px 7px; border-radius:10px; font-size:0.7rem; font-weight:700;
+                background:#1c1400; border:1px solid #f59e0b; color:#fbbf24; }
+    .time-dmh { display:inline-block; padding:2px 7px; border-radius:10px; font-size:0.7rem; font-weight:700;
+                background:#161b22; border:1px solid #30363d; color:#8b949e; }
+    .today-row     { background: #0d1f0d !important; }
+    .yesterday-row { background: #161b22 !important; opacity: 0.75; }
+    .upcoming-controls {
+      display:flex; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;
+    }
+    .upcoming-controls label { font-size:0.82rem; color:#8b949e; }
+    .upcoming-controls select {
+      background:#161b22; border:1px solid #30363d; border-radius:6px;
+      color:#e6edf3; font-size:0.82rem; padding:4px 8px; cursor:pointer;
+    }
+    #upcoming-count { font-size:0.78rem; color:#484f58; }
+
+    /* ── Sort & Filter controls ── */
+    .table-controls {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .table-controls label {
+      font-size: 0.8rem; color: #8b949e; display: flex; align-items: center; gap: 5px;
+    }
+    .table-controls select {
+      background: #161b22; border: 1px solid #30363d; border-radius: 6px;
+      color: #e6edf3; font-size: 0.8rem; padding: 3px 7px; cursor: pointer;
+    }
+    .table-controls input[type="text"] {
+      background: #161b22; border: 1px solid #30363d; border-radius: 6px;
+      color: #e6edf3; font-size: 0.8rem; padding: 3px 8px; width: 130px;
+    }
+    .table-controls input[type="text"]::placeholder { color: #484f58; }
+    .table-controls input[type="text"]:focus { outline: none; border-color: #58a6ff; }
+    .table-controls input[type="checkbox"] { cursor: pointer; accent-color: #58a6ff; }
+
+    th.th-sort { cursor: pointer; user-select: none; }
+    th.th-sort:hover { color: #e6edf3; }
+    th.th-sort::after { content: " ⇅"; opacity: 0.35; font-size: 0.7em; }
+    th.th-sort.asc::after  { content: " ▲"; opacity: 1; color: #58a6ff; }
+    th.th-sort.desc::after { content: " ▼"; opacity: 1; color: #58a6ff; }
+
+    /* ── Collapsible sections ── */
+    .collapsible-header {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    .collapsible-header:hover { opacity: 0.85; }
+    .collapse-icon {
+      font-size: 0.7rem;
+      opacity: 0.6;
+      transition: transform 0.2s;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    .collapsed .collapse-icon { transform: rotate(180deg); }
+    .collapsible-body {
+      overflow: hidden;
+      transition: max-height 0.25s ease, opacity 0.2s ease;
+      max-height: 4000px;
+      opacity: 1;
+    }
+    .collapsible-body.collapsed {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login overlay -->
+  <div id="login-overlay">
+    <div class="login-box">
+      <h2>Earnings Tracker</h2>
+      <div class="login-field">
+        <label for="login-user">Username</label>
+        <input id="login-user" type="text" autocomplete="username" placeholder="username" />
+      </div>
+      <div class="login-field">
+        <label for="login-pass">Password</label>
+        <input id="login-pass" type="password" autocomplete="current-password" placeholder="password" />
+      </div>
+      <div id="login-error"></div>
+      <button class="login-btn" id="login-btn">Sign In</button>
+    </div>
+  </div>
+
+  <header>
+    <h1>📈 Earnings Tracker</h1>
+    <div class="header-right">
+      <span id="market-status" class="market-chip market-closed">● Closed</span>
+      <span id="last-updated">—</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Add symbol form -->
+    <div class="add-form">
+      <input id="sym-input" type="text" placeholder="Symbol (e.g. AAPL)" maxlength="10" />
+      <button class="btn btn-add" id="add-btn">+ Add to Watchlist</button>
+      <span id="form-msg" class="form-msg" style="display:none"></span>
+    </div>
+
+    <!-- Triggered section -->
+    <div class="section-wrap" id="trig-section">
+      <div class="section-title triggered-title">★ Triggered — SMA Gaining</div>
+      <div class="table-wrap trig-wrap">
+        <table class="trig-table">
+          <thead><tr>
+            <th class="th-sort" data-table="trig" data-col="symbol">Symbol</th>
+            <th class="th-sort" data-table="trig" data-col="trigger_date">Trigger Date</th>
+            <th class="th-sort" data-table="trig" data-col="days_since">Days Since</th>
+            <th class="th-sort" data-table="trig" data-col="trigger_price">Trigger @</th>
+            <th class="th-sort" data-table="trig" data-col="sma3">SMA3 (4H)</th>
+            <th class="th-sort" data-table="trig" data-col="sma9">SMA9 (4H)</th>
+            <th class="th-sort" data-table="trig" data-col="pct_diff">% Diff</th>
+            <th class="th-sort" data-table="trig" data-col="delta_pct">Δ% Diff</th>
+            <th class="th-sort" data-table="trig" data-col="last_checked">Last Checked</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="trig-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Potential Triggers section (pre/post market) -->
+    <div class="section-wrap" id="potential-section">
+      <div class="section-title potential-title">⚡ Potential Triggers — Extended Hours</div>
+      <div class="table-wrap potential-wrap">
+        <table class="potential-table trig-table">
+          <thead><tr>
+            <th class="th-sort" data-table="potential" data-col="symbol">Symbol</th>
+            <th class="th-sort" data-table="potential" data-col="company_name">Company</th>
+            <th class="th-sort" data-table="potential" data-col="potential_price">Ext. Price</th>
+            <th class="th-sort" data-table="potential" data-col="proj_sma3">Proj SMA3</th>
+            <th class="th-sort" data-table="potential" data-col="proj_sma9">Proj SMA9</th>
+            <th class="th-sort" data-table="potential" data-col="proj_pct_diff">Proj % Diff</th>
+            <th class="th-sort" data-table="potential" data-col="last_checked">Last Checked</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="potential-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Upcoming Earnings section (collapsible) -->
+    <div class="section-wrap" id="upcoming-section">
+      <div class="upcoming-title collapsible-header" id="upcoming-header" onclick="toggleSection('upcoming')">
+        <span>📅 Upcoming S&amp;P 500 Earnings</span>
+        <span class="collapse-icon" id="upcoming-icon">▲</span>
+      </div>
+      <div id="upcoming-body" class="collapsible-body">
+        <div class="upcoming-controls">
+          <label>Show next
+            <select id="upcoming-days">
+              <option value="7">7 days</option>
+              <option value="14" selected>14 days</option>
+              <option value="21">21 days</option>
+            </select>
+          </label>
+          <label>Time:
+            <select id="upcoming-time-filter">
+              <option value="all">All</option>
+              <option value="bmo">BMO only</option>
+              <option value="amc">AMC only</option>
+            </select>
+          </label>
+          <label>
+            <input type="checkbox" id="upcoming-wl-filter" /> Watchlist only
+          </label>
+          <span id="upcoming-count"></span>
+        </div>
+        <div class="upcoming-wrap">
+          <table class="upcoming-table">
+            <thead><tr>
+              <th class="th-sort" data-table="upcoming" data-col="date">Date</th>
+              <th class="th-sort" data-table="upcoming" data-col="symbol">Symbol</th>
+              <th>Company</th>
+              <th class="th-sort" data-table="upcoming" data-col="hour">Time</th>
+              <th>In Watchlist</th>
+            </tr></thead>
+            <tbody id="upcoming-tbody">
+              <tr class="empty-row"><td colspan="5">Loading upcoming earnings…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Watchlist section (collapsible) -->
+    <div class="section-wrap" id="watch-section">
+      <div class="section-title watchlist-title collapsible-header" id="watch-header" onclick="toggleSection('watch')">
+        <span>👁 Watchlist — Waiting for SMA Reversal</span>
+        <span class="collapse-icon" id="watch-icon">▲</span>
+      </div>
+      <div id="watch-body" class="collapsible-body">
+        <div class="table-controls">
+          <label>
+            <input type="text" id="watch-sym-filter" placeholder="Filter symbol…" />
+          </label>
+          <label>Direction:
+            <select id="watch-dir-filter">
+              <option value="all">All</option>
+              <option value="gaining">SMA3 &gt; SMA9</option>
+              <option value="declining">SMA3 &lt; SMA9</option>
+              <option value="unknown">No Data</option>
+            </select>
+          </label>
+        </div>
+        <div class="table-wrap watch-wrap">
+          <table class="watch-table">
+            <thead><tr>
+              <th class="th-sort" data-table="watch" data-col="symbol">Symbol</th>
+              <th class="th-sort" data-table="watch" data-col="company_name">Company</th>
+              <th class="th-sort" data-table="watch" data-col="earnings_date">Earnings Date</th>
+              <th class="th-sort" data-table="watch" data-col="earnings_gain_pct">Gain% on Earn</th>
+              <th class="th-sort" data-table="watch" data-col="high_30d">30d High</th>
+              <th class="th-sort" data-table="watch" data-col="sma3">SMA3 (4H)</th>
+              <th class="th-sort" data-table="watch" data-col="sma9">SMA9 (4H)</th>
+              <th class="th-sort" data-table="watch" data-col="pct_diff">% Diff</th>
+              <th class="th-sort" data-table="watch" data-col="last_checked">Last Checked</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="watch-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p id="status" style="color:#484f58;font-size:0.8rem;margin-top:16px;">Loading…</p>
+  </main>
+
+  <script>
+    // ── Auth ──────────────────────────────────────────────────────────────
+    (function () {
+      const overlay = document.getElementById("login-overlay");
+      const errorEl = document.getElementById("login-error");
+      function unlock() { overlay.classList.add("hidden"); }
+      if (window.location.protocol === "file:" || sessionStorage.getItem("ta_auth") === "1") { unlock(); return; }
+      const EU = "__ENCODED_USER__";
+      const EP = "__ENCODED_PASS__";
+      function encode3(s) { return btoa(btoa(btoa(s))); }
+      function attempt() {
+        const u = document.getElementById("login-user").value.trim();
+        const p = document.getElementById("login-pass").value;
+        if (encode3(u) === EU && encode3(p) === EP) {
+          sessionStorage.setItem("ta_auth", "1");
+          errorEl.textContent = "";
+          unlock();
+        } else {
+          errorEl.textContent = "Invalid username or password.";
+          document.getElementById("login-pass").value = "";
+        }
+      }
+      document.getElementById("login-btn").addEventListener("click", attempt);
+      document.getElementById("login-pass").addEventListener("keydown", e => { if (e.key === "Enter") attempt(); });
+      document.getElementById("login-user").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("login-pass").focus(); });
+    })();
+
+    // ── Constants ─────────────────────────────────────────────────────────
+    const REPO           = "avalonaialert/dashboard";
+    const WATCHLIST_URL  = `https://api.github.com/repos/${REPO}/contents/earnings_watchlist.json`;
+    const SP500_URL      = `https://api.github.com/repos/${REPO}/contents/sp500_symbols.json`;
+    const GH_READ_TOKEN  = "__GH_READ_TOKEN__";
+    const GH_WRITE_TOKEN = GH_READ_TOKEN;
+    const FINNHUB_KEY    = "d89995pr01qla01mkncgd89995pr01qla01mknd0";
+
+    // ── Local token (for file:// usage where CI injection doesn't run) ────
+    function _getEffectiveToken() {
+      if (GH_WRITE_TOKEN && !GH_WRITE_TOKEN.startsWith("__")) return GH_WRITE_TOKEN;
+      // Running locally — ask once per session
+      let t = sessionStorage.getItem("gh_local_token");
+      if (!t) {
+        t = prompt("Enter your GitHub personal access token (needed for writes):");
+        if (t) sessionStorage.setItem("gh_local_token", t.trim());
+      }
+      return t ? t.trim() : null;
+    }
+
+    // ── State ──────────────────────────────────────────────────────────────
+    let _wlData = null;   // full watchlist JSON object
+    let _wlSha  = null;   // current SHA for GitHub writes
+
+    const _sort = {
+      trig:      { col: "trigger_date", dir: "desc" },
+      potential: { col: "symbol",       dir: "asc"  },
+      watch:     { col: "earnings_date", dir: "desc" },
+      upcoming:  { col: "date",         dir: "asc"  },
+    };
+
+    // ── Sort helpers ───────────────────────────────────────────────────────
+    function sortRows(arr, col, dir) {
+      return [...arr].sort((a, b) => {
+        let av = a[col], bv = b[col];
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (typeof av === "string" && typeof bv === "string")
+          return dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+        return dir === "asc" ? av - bv : bv - av;
+      });
+    }
+
+    function updateSortHeaders(tableKey) {
+      document.querySelectorAll(`th.th-sort[data-table="${tableKey}"]`).forEach(th => {
+        th.classList.remove("asc", "desc");
+        if (th.dataset.col === _sort[tableKey].col) th.classList.add(_sort[tableKey].dir);
+      });
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      return new Date(iso + (iso.length === 10 ? "T12:00:00Z" : "")).toLocaleDateString("en-US", {
+        timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
+      });
+    }
+
+    function fmtTime(iso) {
+      if (!iso) return "—";
+      return new Date(iso).toLocaleString("en-US", {
+        timeZone: "America/New_York",
+        month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: true,
+      });
+    }
+
+    function daysSince(iso) {
+      if (!iso) return "—";
+      const ms = Date.now() - new Date(iso + (iso.length === 10 ? "T12:00:00Z" : "")).getTime();
+      const d  = Math.floor(ms / 86_400_000);
+      return d === 0 ? "Today" : d === 1 ? "1 day" : `${d} days`;
+    }
+
+    function symLink(sym) {
+      return `<a href="https://finviz.com/quote?t=${sym}&p=d" target="_blank" rel="noopener" class="sym-link">${sym}</a>`;
+    }
+
+    function dirBadge(dir) {
+      const map = {
+        gaining:   ["dir-gaining",   "▲ Gaining"],
+        declining: ["dir-declining", "▼ Declining"],
+        flat:      ["dir-flat",      "— Flat"],
+        unknown:   ["dir-unknown",   "? Unknown"],
+      };
+      const [cls, label] = map[dir] ?? map.unknown;
+      return `<span class="dir-badge ${cls}">${label}</span>`;
+    }
+
+    function srcBadge(src) {
+      return src === "earnings"
+        ? `<span class="src-badge src-earnings">Earnings</span>`
+        : `<span class="src-badge src-manual">Manual</span>`;
+    }
+
+    function fmt$(v) { return v != null ? `$${Number(v).toFixed(2)}` : "—"; }
+    function fmtPct(v) {
+      if (v == null) return "—";
+      const n = Number(v);
+      return `<span class="td-gain ${n >= 0 ? "pos" : "neg"}">${n >= 0 ? "+" : ""}${n.toFixed(1)}%</span>`;
+    }
+
+    // ── GitHub API ─────────────────────────────────────────────────────────
+    async function _ghFetch(url) {
+      const token   = _getEffectiveToken();
+      const headers = { "Accept": "application/vnd.github.v3+json" };
+      if (token) headers["Authorization"] = `token ${token}`;
+      const resp = await fetch(url, { cache: "no-store", headers });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} ${url}`);
+      const env = await resp.json();
+      return { data: JSON.parse(atob(env.content.replace(/\n/g, ""))), sha: env.sha };
+    }
+
+    async function _ghWrite(content, sha) {
+      const token = _getEffectiveToken();
+      if (!token) throw new Error("No GitHub token — cannot write. Reload and enter your token.");
+      const headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `token ${token}`,
+        "Content-Type": "application/json",
+      };
+      const body = JSON.stringify({
+        message: "watchlist update (web)",
+        content: btoa(JSON.stringify(content, null, 2)),
+        sha,
+      });
+      const resp = await fetch(WATCHLIST_URL, { method: "PUT", headers, body });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.message || `HTTP ${resp.status}`);
+      }
+      return (await resp.json()).content.sha;
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function fmtDiff(val) {
+      if (val == null) return "—";
+      const n = Number(val);
+      const cls = n > 0 ? "pos" : n < 0 ? "neg" : "";
+      return `<span class="td-gain ${cls}">${n >= 0 ? "+" : ""}${n.toFixed(2)}%</span>`;
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────────
+    function renderTriggered(list) {
+      const tbody = document.getElementById("trig-tbody");
+
+      let rows = list
+        .filter(e => e.status === "triggered")
+        .map(e => ({
+          ...e,
+          days_since: e.trigger_date
+            ? Math.floor((Date.now() - new Date(e.trigger_date + "T12:00:00Z").getTime()) / 86_400_000)
+            : -1,
+          delta_pct: (e.pct_diff != null && e.prev_pct_diff != null)
+            ? e.pct_diff - e.prev_pct_diff : null,
+        }));
+
+      rows = sortRows(rows, _sort.trig.col, _sort.trig.dir);
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="10">No triggered stocks yet</td></tr>`;
+        updateSortHeaders("trig");
+        return;
+      }
+
+      tbody.innerHTML = rows.map(e => {
+        const daysFmt = e.days_since < 0 ? "—"
+          : e.days_since === 0 ? "Today"
+          : e.days_since === 1 ? "1 day"
+          : `${e.days_since} days`;
+        return `<tr>
+          <td class="td-sym trig">${symLink(e.symbol)}</td>
+          <td class="td-meta">${fmtDate(e.trigger_date)}</td>
+          <td class="td-meta">${daysFmt}</td>
+          <td class="td-price">${fmt$(e.trigger_price)}</td>
+          <td class="td-price">${e.sma3 != null ? e.sma3.toFixed(4) : "—"}</td>
+          <td class="td-price">${e.sma9 != null ? e.sma9.toFixed(4) : "—"}</td>
+          <td>${fmtDiff(e.pct_diff)}</td>
+          <td>${fmtDiff(e.delta_pct)}</td>
+          <td class="td-meta">${fmtTime(e.last_checked)}</td>
+          <td><button class="btn btn-remove" onclick="removeSymbol('${e.symbol}')">Remove</button></td>
+        </tr>`;
+      }).join("");
+      updateSortHeaders("trig");
+    }
+
+    function renderPotentialTriggers(list) {
+      const tbody = document.getElementById("potential-tbody");
+
+      let rows = list
+        .filter(e => e.potential_trigger && e.status === "watching")
+        .map(e => ({ ...e, company_name: companyName(e.symbol) }));
+
+      rows = sortRows(rows, _sort.potential.col, _sort.potential.dir);
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No potential triggers — runs during pre/post market hours</td></tr>`;
+        updateSortHeaders("potential");
+        return;
+      }
+
+      tbody.innerHTML = rows.map(e => `<tr>
+        <td class="td-sym potential">${symLink(e.symbol)}</td>
+        <td class="td-meta" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${e.company_name || "—"}</td>
+        <td class="td-price">${fmt$(e.potential_price)}</td>
+        <td class="td-price">${e.proj_sma3 != null ? e.proj_sma3.toFixed(4) : "—"}</td>
+        <td class="td-price">${e.proj_sma9 != null ? e.proj_sma9.toFixed(4) : "—"}</td>
+        <td>${fmtDiff(e.proj_pct_diff)}</td>
+        <td class="td-meta">${fmtTime(e.last_checked)}</td>
+        <td><button class="btn btn-remove" onclick="removeSymbol('${e.symbol}')">Remove</button></td>
+      </tr>`).join("");
+      updateSortHeaders("potential");
+    }
+
+    function renderWatchlist(list) {
+      const dirFilter = document.getElementById("watch-dir-filter")?.value ?? "all";
+      const symFilter = (document.getElementById("watch-sym-filter")?.value ?? "").toUpperCase().trim();
+      const tbody     = document.getElementById("watch-tbody");
+
+      // Direction for filtering: gaining = both SMAs gaining + fast>slow
+      function entryDir(e) {
+        if (e.sma3 == null || e.sma9 == null) return "unknown";
+        if (e.sma3 > e.sma9) return "gaining";
+        return "declining";
+      }
+
+      let rows = list.filter(e => e.status === "watching").map(e => ({
+        ...e,
+        company_name: companyName(e.symbol),
+        _dir: entryDir(e),
+      }));
+      if (dirFilter !== "all") rows = rows.filter(e => e._dir === dirFilter);
+      if (symFilter) rows = rows.filter(e =>
+        e.symbol.includes(symFilter) || e.company_name.toUpperCase().includes(symFilter));
+      rows = sortRows(rows, _sort.watch.col, _sort.watch.dir);
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="10">No stocks match current filters</td></tr>`;
+        updateSortHeaders("watch");
+        return;
+      }
+
+      tbody.innerHTML = rows.map(e => `<tr>
+        <td class="td-sym watch">${symLink(e.symbol)}</td>
+        <td class="td-meta" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${e.company_name || "—"}</td>
+        <td class="td-meta">${e.earnings_date ? fmtDate(e.earnings_date) : "—"}</td>
+        <td>${fmtPct(e.earnings_gain_pct)}</td>
+        <td class="td-price">${fmt$(e.high_30d)}</td>
+        <td class="td-price">${e.sma3 != null ? e.sma3.toFixed(4) : "—"}</td>
+        <td class="td-price">${e.sma9 != null ? e.sma9.toFixed(4) : "—"}</td>
+        <td>${fmtDiff(e.pct_diff)}</td>
+        <td class="td-meta">${fmtTime(e.last_checked)}</td>
+        <td><button class="btn btn-remove" onclick="removeSymbol('${e.symbol}')">Remove</button></td>
+      </tr>`).join("");
+      updateSortHeaders("watch");
+    }
+
+    function render(wl) {
+      const list = wl.watchlist ?? [];
+      renderTriggered(list);
+      renderPotentialTriggers(list);
+      renderWatchlist(list);
+      document.getElementById("last-updated").textContent =
+        wl.last_updated ? "Updated " + fmtTime(wl.last_updated) : "";
+      document.getElementById("status").textContent = "";
+
+
+    }
+
+    // ── Load / refresh ─────────────────────────────────────────────────────
+    async function loadWatchlist() {
+      document.getElementById("status").textContent = "Loading…";
+      try {
+        const { data, sha } = await _ghFetch(WATCHLIST_URL);
+        _wlData = data;
+        _wlSha  = sha;
+        render(_wlData);
+      } catch (err) {
+        if (err.message.includes("HTTP 404")) {
+          _wlData = { last_updated: null, watchlist: [] };
+          _wlSha  = null;
+          render(_wlData);
+          document.getElementById("status").textContent =
+            "No watchlist yet — add symbols above or run earnings_tracker.py";
+        } else {
+          document.getElementById("status").textContent =
+            `Failed to load: ${err.message}`;
+        }
+      }
+    }
+
+    async function silentRefresh() {
+      try {
+        const { data, sha } = await _ghFetch(WATCHLIST_URL);
+        if (data.last_updated === _wlData?.last_updated) return;
+        _wlData = data;
+        _wlSha  = sha;
+        render(_wlData);
+      } catch (_) {}
+    }
+
+    // ── Manual add / remove ────────────────────────────────────────────────
+    function showMsg(text, type) {
+      const el = document.getElementById("form-msg");
+      el.textContent = text;
+      el.className   = `form-msg ${type}`;
+      el.style.display = "inline-block";
+      if (type === "ok") setTimeout(() => { el.style.display = "none"; }, 3000);
+    }
+
+    async function addSymbol(sym) {
+      sym = sym.trim().toUpperCase();
+      if (!sym) return;
+      if (_wlData?.watchlist?.some(e => e.symbol === sym)) {
+        showMsg(`${sym} is already in the watchlist`, "err");
+        return;
+      }
+
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const entry = {
+        symbol:            sym,
+        added_date:        today,
+        source:            "manual",
+        earnings_date:     null,
+        earnings_gain_pct: null,
+        earnings_close:    null,
+        high_30d:          null,
+        status:            "watching",
+        sma3:              null,
+        prev_sma3:         null,
+        sma9:              null,
+        prev_sma9:         null,
+        pct_diff:          null,
+        prev_pct_diff:     null,
+        trigger_date:      null,
+        trigger_price:     null,
+        trigger_sma3:      null,
+        trigger_sma9:      null,
+        trigger_pct_diff:  null,
+        potential_trigger: false,
+        potential_price:   null,
+        proj_sma3:         null,
+        proj_sma9:         null,
+        proj_pct_diff:     null,
+        last_checked:      null,
+      };
+
+      const updated = {
+        ..._wlData,
+        last_updated: new Date().toISOString(),
+        watchlist: [...(_wlData?.watchlist ?? []), entry],
+      };
+
+      const btn = document.getElementById("add-btn");
+      btn.disabled = true;
+      try {
+        _wlSha  = await _ghWrite(updated, _wlSha);
+        _wlData = updated;
+        render(_wlData);
+        document.getElementById("sym-input").value = "";
+        showMsg(`${sym} added to watchlist`, "ok");
+      } catch (err) {
+        showMsg(`Error: ${err.message}`, "err");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function removeSymbol(sym) {
+      if (!confirm(`Remove ${sym} from the watchlist?`)) return;
+      const updated = {
+        ..._wlData,
+        last_updated: new Date().toISOString(),
+        watchlist: (_wlData?.watchlist ?? []).filter(e => e.symbol !== sym),
+      };
+      try {
+        _wlSha  = await _ghWrite(updated, _wlSha);
+        _wlData = updated;
+        render(_wlData);
+        showMsg(`${sym} removed`, "ok");
+      } catch (err) {
+        alert(`Remove failed: ${err.message}`);
+      }
+    }
+
+    // ── Add button wiring ──────────────────────────────────────────────────
+    document.getElementById("add-btn").addEventListener("click", () => {
+      addSymbol(document.getElementById("sym-input").value);
+    });
+    document.getElementById("sym-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") addSymbol(document.getElementById("sym-input").value);
+    });
+
+    // ── Upcoming Earnings ─────────────────────────────────────────────────
+    let _sp500Set   = null;
+    let _sp500Names = {};   // symbol -> company name
+
+    async function fetchSp500Set() {
+      if (_sp500Set) return _sp500Set;
+      try {
+        const { data } = await _ghFetch(SP500_URL);
+        if (Array.isArray(data)) {
+          _sp500Set = new Set(data);
+        } else {
+          _sp500Names = data;
+          _sp500Set   = new Set(Object.keys(data));
+        }
+      } catch (_) {
+        _sp500Set = new Set();
+      }
+      return _sp500Set;
+    }
+
+    function companyName(sym) {
+      return _sp500Names[sym] || "";
+    }
+
+    function fmtUpcomingDate(dateStr) {
+      return new Date(dateStr + "T12:00:00Z").toLocaleDateString("en-US", {
+        timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric",
+      });
+    }
+
+    function timeBadge(hour) {
+      if (hour === "amc")  return `<span class="time-amc">AMC</span>`;
+      if (hour === "dmh")  return `<span class="time-dmh">DMH</span>`;
+      return `<span class="time-bmo">BMO</span>`;
+    }
+
+    async function loadUpcomingEarnings() {
+      const days    = parseInt(document.getElementById("upcoming-days").value, 10);
+      const timeF   = document.getElementById("upcoming-time-filter")?.value ?? "all";
+      const wlOnly  = document.getElementById("upcoming-wl-filter")?.checked ?? false;
+      const tbody   = document.getElementById("upcoming-tbody");
+      const countEl = document.getElementById("upcoming-count");
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="5">Loading…</td></tr>`;
+
+      const todayEST = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const ydayDate = new Date(todayEST); ydayDate.setDate(ydayDate.getDate() - 1);
+      const ydayEST  = ydayDate.toISOString().slice(0, 10);
+      const toDate   = new Date(todayEST); toDate.setDate(toDate.getDate() + days);
+      const toStr    = toDate.toISOString().slice(0, 10);
+
+      try {
+        const [sp500, resp] = await Promise.all([
+          fetchSp500Set(),
+          // Fetch from yesterday to capture prior-day BMO + AMC
+          fetch(
+            `https://finnhub.io/api/v1/calendar/earnings?from=${ydayEST}&to=${toStr}&token=${FINNHUB_KEY}`,
+            { cache: "no-store" }
+          ),
+        ]);
+
+        if (!resp.ok) throw new Error(`Finnhub HTTP ${resp.status}`);
+        const items = (await resp.json()).earningsCalendar ?? [];
+
+        const watchlistSyms = new Set((_wlData?.watchlist ?? []).map(e => e.symbol));
+
+        // Filter: S&P 500 universe, time type, watchlist-only flag
+        let filtered = items.filter(it =>
+          it.symbol && it.date &&
+          (sp500.size === 0 || sp500.has(it.symbol)) &&
+          (timeF === "all" || it.hour === timeF) &&
+          (!wlOnly || watchlistSyms.has(it.symbol))
+        );
+
+        // Sort
+        filtered = sortRows(filtered, _sort.upcoming.col, _sort.upcoming.dir);
+
+        if (!filtered.length) {
+          tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No S&P 500 earnings match current filters</td></tr>`;
+          countEl.textContent = "";
+          updateSortHeaders("upcoming");
+          return;
+        }
+
+        const uniqueDates = new Set(filtered.map(it => it.date)).size;
+        countEl.textContent = `${filtered.length} companies across ${uniqueDates} days`;
+
+        let prevDate = null;
+        tbody.innerHTML = filtered.map(it => {
+          const isToday     = it.date === todayEST;
+          const isYesterday = it.date === ydayEST;
+          const inWl        = watchlistSyms.has(it.symbol);
+          const rowCls      = isToday ? ' class="today-row"'
+                            : isYesterday ? ' class="yesterday-row"' : "";
+          let dateLabel = "";
+          if (it.date !== prevDate) {
+            if (isToday)     dateLabel = `📍 Today`;
+            else if (isYesterday) dateLabel = `⬅ Yesterday`;
+            else             dateLabel = fmtUpcomingDate(it.date);
+          }
+          prevDate = it.date;
+          return `<tr${rowCls}>
+            <td class="td-date-group">${dateLabel}</td>
+            <td class="td-sym">${symLink(it.symbol)}</td>
+            <td class="td-meta" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${companyName(it.symbol) || "—"}</td>
+            <td>${timeBadge(it.hour)}</td>
+            <td>${inWl
+              ? `<span class="src-earnings" style="font-size:0.7rem">In Watchlist</span>`
+              : `<span style="color:#484f58;font-size:0.75rem">—</span>`}</td>
+          </tr>`;
+        }).join("");
+        updateSortHeaders("upcoming");
+
+      } catch (err) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="5">Failed to load: ${err.message}</td></tr>`;
+      }
+    }
+
+    // ── Collapsible sections ───────────────────────────────────────────────
+    function toggleSection(key) {
+      const body = document.getElementById(`${key}-body`);
+      const icon = document.getElementById(`${key}-icon`);
+      const collapsed = body.classList.toggle("collapsed");
+      icon.textContent = collapsed ? "▼" : "▲";
+      sessionStorage.setItem(`section_${key}`, collapsed ? "0" : "1");
+    }
+
+    function restoreSectionState(key) {
+      const saved = sessionStorage.getItem(`section_${key}`);
+      if (saved === "0") {
+        const body = document.getElementById(`${key}-body`);
+        const icon = document.getElementById(`${key}-icon`);
+        body.classList.add("collapsed");
+        icon.textContent = "▼";
+      }
+    }
+
+    // ── Market clock ───────────────────────────────────────────────────────
+    function updateMarketClock() {
+      const est  = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const day  = est.getDay();
+      const mins = est.getHours() * 60 + est.getMinutes();
+      let cls, label;
+      if (day === 0 || day === 6 || mins < 240 || mins >= 1200)
+        { cls = "market-closed"; label = "● Closed"; }
+      else if (mins < 570)
+        { cls = "market-pre";    label = "● Pre-Market"; }
+      else if (mins < 960)
+        { cls = "market-open";   label = "● Market Open"; }
+      else
+        { cls = "market-after";  label = "● After Hours"; }
+      const el = document.getElementById("market-status");
+      el.className  = `market-chip ${cls}`;
+      el.textContent = label;
+    }
+    updateMarketClock();
+    setInterval(updateMarketClock, 60_000);
+
+    // ── Boot ───────────────────────────────────────────────────────────────
+
+    // Sort header clicks — event delegation on static thead th elements
+    document.querySelectorAll("th.th-sort").forEach(th => {
+      th.addEventListener("click", () => {
+        const tbl = th.dataset.table;
+        const col = th.dataset.col;
+        _sort[tbl].dir = (_sort[tbl].col === col && _sort[tbl].dir === "asc") ? "desc" : "asc";
+        _sort[tbl].col = col;
+        if (tbl === "trig")      renderTriggered(_wlData?.watchlist ?? []);
+        if (tbl === "potential") renderPotentialTriggers(_wlData?.watchlist ?? []);
+        if (tbl === "watch")     renderWatchlist(_wlData?.watchlist ?? []);
+        if (tbl === "upcoming")  loadUpcomingEarnings();
+      });
+    });
+
+    // Filter control listeners
+    document.getElementById("watch-dir-filter").addEventListener("change",
+      () => renderWatchlist(_wlData?.watchlist ?? []));
+    document.getElementById("watch-sym-filter").addEventListener("input",
+      () => renderWatchlist(_wlData?.watchlist ?? []));
+    document.getElementById("upcoming-days").addEventListener("change", loadUpcomingEarnings);
+    document.getElementById("upcoming-time-filter").addEventListener("change", loadUpcomingEarnings);
+    document.getElementById("upcoming-wl-filter").addEventListener("change", loadUpcomingEarnings);
+
+    restoreSectionState("upcoming");
+    restoreSectionState("watch");
+
+    // Fetch S&P 500 names first so company column is populated on first render
+    fetchSp500Set().then(() =>
+      loadWatchlist().then(() => {
+        loadUpcomingEarnings();
+        setInterval(silentRefresh, 2 * 60_000);
+        setInterval(loadUpcomingEarnings, 10 * 60_000);
+      })
+    );
+  </script>
+</body>
+</html>
