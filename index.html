@@ -497,23 +497,15 @@
     })();
 
     // ── Constants ─────────────────────────────────────────────────────────
-    const REPO           = "avalonaialert/dashboard";
+    const REPO           = "avalonaialert/earnings";
     const WATCHLIST_URL  = `https://api.github.com/repos/${REPO}/contents/earnings_watchlist.json`;
     const SP500_URL      = `https://api.github.com/repos/${REPO}/contents/sp500_symbols.json`;
     const GH_READ_TOKEN  = "__GH_READ_TOKEN__";
     const GH_WRITE_TOKEN = GH_READ_TOKEN;
     const FINNHUB_KEY    = "d89995pr01qla01mkncgd89995pr01qla01mknd0";
 
-    // ── Local token (for file:// usage where CI injection doesn't run) ────
     function _getEffectiveToken() {
-      if (GH_WRITE_TOKEN && !GH_WRITE_TOKEN.startsWith("__")) return GH_WRITE_TOKEN;
-      // Running locally — ask once per session
-      let t = sessionStorage.getItem("gh_local_token");
-      if (!t) {
-        t = prompt("Enter your GitHub personal access token (needed for writes):");
-        if (t) sessionStorage.setItem("gh_local_token", t.trim());
-      }
-      return t ? t.trim() : null;
+      return (GH_WRITE_TOKEN && !GH_WRITE_TOKEN.startsWith("__")) ? GH_WRITE_TOKEN : null;
     }
 
     // ── State ──────────────────────────────────────────────────────────────
